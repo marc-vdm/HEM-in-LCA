@@ -217,9 +217,9 @@ def processing_scores(all_scores) -> pd.DataFrame:
 
         df = df.copy()
         # df = df[[col_name, "product_name", "location"]]
-        df = df[[col_name, "location"]]
+        df = df[[col_name, "product_name"]]
 
-        df = df.groupby(by=["location"]).sum()
+        df = df.groupby(by=["product_name"]).sum()
         contributors = ca.sort_array(np.array(df[col_name]), limit=top)
 
         remainder = df[col_name].sum() - sum(contributors[:, 0])
@@ -248,8 +248,8 @@ def processing_scores(all_scores) -> pd.DataFrame:
     # add human readable information about the processes
     activity_data = [bd.get_activity(key) for key in df.index]
     df["activity_data"] = activity_data
-    #df["product_name"] = [act["reference product"] for act in activity_data]
-    df["location"] = [act["location"] for act in activity_data]
+    df["product_name"] = [act["reference product"] for act in activity_data]
+    #df["location"] = [act["location"] for act in activity_data]
 
 
     # sort
