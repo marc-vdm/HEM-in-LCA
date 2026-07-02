@@ -116,7 +116,7 @@ def unpack_classifications(df: pd.DataFrame, systems: list) -> pd.DataFrame:
 # retrieve scenario key pairs
 #
 @timing
-def identify_scenario(df: pd.DataFrame, scenarios, path_dict, assign_other=True) -> tuple[pd.DataFrame, list]:
+def identify_cpc_scenario(df: pd.DataFrame, scenarios, path_dict, assign_other=True) -> tuple[pd.DataFrame, list]:
     """Add new column to df 'scenarios'.
 
     Supports scenarios, either as list of strings, as tuples of strings or as dicts of strings
@@ -183,6 +183,21 @@ def identify_scenario(df: pd.DataFrame, scenarios, path_dict, assign_other=True)
     df["scenarios"] = scenario_col
 
     return df, new_scenarios
+
+
+@timing
+def identify_non_cpc_scenario(df: pd.DataFrame, scenarios) -> tuple[pd.DataFrame, list]:
+    """Add new column to df 'scenarios'.
+
+    """
+    field = scenarios["type"]
+    name = scenarios["name"][0]
+    scenario_col = [name if field_row.startswith(name) else "No Scenario Assigned" for field_row in df[field].to_list()]
+
+    # add column to df
+    df["scenarios"] = scenario_col
+
+    return df, [name]
 
 
 @timing

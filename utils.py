@@ -60,6 +60,7 @@ def print_mlca_progress(indicator, t_diff, i, n_mth, n_bio, n_act, lca_sec=False
           f"duration: {time_format(t_diff)}", end="")
 
 
+@timing
 def export_df_to_xlsx(dfs, file_name):
     def write_excel_tab(_df, sheet_name):
         with pd.ExcelWriter(full_path, engine="openpyxl", mode="a") as writer:
@@ -80,5 +81,5 @@ def export_df_to_xlsx(dfs, file_name):
 
     df.to_excel(full_path, sheet_name="results")
     write_excel_tab(df, "results")
-    for col_name, _df in contribution_dfs.items():
-        write_excel_tab(_df, col_name)
+    for sheet_name, _df in contribution_dfs.items():
+        write_excel_tab(_df, sheet_name)

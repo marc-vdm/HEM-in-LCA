@@ -1,4 +1,4 @@
-from calculation_settings import methods, mining_hem
+from calculation_settings import methods, mining_hem, location_hem
 from calculations import *
 from loading_data import *
 
@@ -14,24 +14,37 @@ CLASSIFICATIONS = ["CPC"]
 
 FUS = [
     ('ecoinvent-3.11-cutoff', '9e580072f69b141c3254ab82a0e56c07'),  # copper, cathode | market for copper, cathode | GLO
+    ('ecoinvent-3.11-cutoff', '9e580072f69b141c3254ab82a0e56c07'),  # copper, cathode | market for copper, cathode | GLO
 ]
+
 HEM_SCENARIOS = [
     mining_hem,
+    location_hem
 ]
 
-for functional_unit, scenario in zip(FUS, HEM_SCENARIOS):
+CONTRIBUTION_FIELDS = [
+    "reference product",
+    "location"
+]
 
-    # Set the current project
-    bd.projects.set_current(PROJECT)
+# Get a tree structure of CPC data
+CPC_tree = get_cpc_tree()
 
-    CPC_tree = get_cpc_tree()
+# Set the current project
+bd.projects.set_current(PROJECT)
 
-    # Load the database
-    if DB_NAME not in bd.databases:
-        raise ValueError(f"Database {DB_NAME} not found in project {PROJECT}")
+# Load the database
+if DB_NAME not in bd.databases:
+    raise ValueError(f"Database {DB_NAME} not found in project {PROJECT}")
 
-    df = load_bw_2_pd(DB_NAME)
-    df = unpack_classifications(df, CLASSIFICATIONS)
+# Create a dataframe of the database
+db_df = load_bw_2_pd(DB_NAME)
+db_df = unpack_classifications(db_df, CLASSIFICATIONS)
+
+# Iterate over all sets of FU, HEM scenario and contribution field
+for functional_unit, scenario, contribution_field in zip(FUS, HEM_SCENARIOS, CONTRIBUTION_FIELDS):
+
+    df = db_df.copy()
 
     # create calculation setup
     reference_flows = [{functional_unit: 1}]
@@ -46,7 +59,11 @@ for functional_unit, scenario in zip(FUS, HEM_SCENARIOS):
     lca.lci(factorize=True)
 
     # generate scenario matrices
-    df, scenarios = identify_scenario(df, scenario, CPC_tree, assign_other=False)
+    if scenario["type"] == "cpc":
+        df, scenarios = identify_cpc_scenario(df, scenario["name"], CPC_tree, assign_other=False)
+    else:
+        df, scenarios = identify_non_cpc_scenario(df, scenario)
+
     scenario_pairs, direct_skips = get_scenario_data(
         df,
         scenarios=scenarios,
@@ -64,5 +81,7 @@ for functional_unit, scenario in zip(FUS, HEM_SCENARIOS):
     all_scores.update(new_scores)
 
     print("+ Processing results")
-    scores = processing_scores(all_scores)
-    export_df_to_xlsx(scores, f"export {str(bd.get_activity(functional_unit))} {scenario}.xlsx")
+    scores = processing_scores(all_scores, contribution_field=contribution_field)
+    print("+ Exporting file")
+    export_df_to_xlsx(scores, f"export {str(bd.get_activity(functional_unit))} {scenario['name']}.xlsx")
+    print("+ Done")

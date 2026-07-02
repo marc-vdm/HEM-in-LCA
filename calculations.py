@@ -211,16 +211,16 @@ def techno_mlca(lca, calculation_setup, scenarios: dict, result_dict: dict = Non
 
 
 @timing
-def processing_scores(all_scores) -> pd.DataFrame:
+def processing_scores(all_scores: dict, contribution_field: str) -> pd.DataFrame:
     def contributions(df, col_name, top=3):
         ca = ba.contribution.ContributionAnalysis()
 
         df = df.copy()
-        # df = df[[col_name, "product_name", "location"]]
-        df = df[[col_name, "product_name"]]
+        df = df[[col_name, "contribution_field"]]
 
-        df = df.groupby(by=["product_name"]).sum()
+        df = df.groupby(by=["contribution_field"]).sum()
         contributors = ca.sort_array(np.array(df[col_name]), limit=top)
+        contributors = contributors[contributors[:, 0] != 0]  # in case we have fewer than 'top' values, we drop the zeroes
 
         remainder = df[col_name].sum() - sum(contributors[:, 0])
         locs = [int(num) for num in contributors[:, 1]]
@@ -248,17 +248,21 @@ def processing_scores(all_scores) -> pd.DataFrame:
     # add human readable information about the processes
     activity_data = [bd.get_activity(key) for key in df.index]
     df["activity_data"] = activity_data
-    df["product_name"] = [act["reference product"] for act in activity_data]
-    #df["location"] = [act["location"] for act in activity_data]
-
+    df["contribution_field"] = [act[contribution_field] for act in activity_data]
+    # group some locations if the contribution_field is location
+    if contribution_field == "location":
+        df.loc[df["contribution_field"].str.startswith("AU-", na=False), "contribution_field"] = "AU"  # Australia
+        df.loc[df["contribution_field"].str.startswith("BR-", na=False), "contribution_field"] = "BR"  # Brazil
+        df.loc[df["contribution_field"].str.startswith("CA-", na=False), "contribution_field"] = "CA"  # Canada
+        df.loc[df["contribution_field"].str.startswith("CN-", na=False), "contribution_field"] = "CN"  # China
+        df.loc[df["contribution_field"].str.startswith("IN-", na=False), "contribution_field"] = "IN"  # India
+        df.loc[df["contribution_field"].str.startswith("US-", na=False), "contribution_field"] = "US"  # United States
 
     # sort
     df["sort_me"] = abs(df["original"])
     df = df.sort_values(by="sort_me", ascending=False)
     del df["sort_me"]
 
-    df_remaining = contributions(df, "remaining")
-    df_target = contributions(df, "target")
     contribution_dfs = [contributions(df, col_name) for col_name in
                         ["original", "remaining", "target", "direct_remaining", "direct_target"]]
     contribution_dfs = {"contributions": pd.concat(contribution_dfs, axis=1)}
